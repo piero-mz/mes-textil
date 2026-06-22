@@ -1,65 +1,95 @@
-import Image from "next/image";
+'use client'
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
 
-export default function Home() {
+export default function LoginPage() {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const router = useRouter()
+
+  const handleLogin = async () => {
+    const { data, error } = await supabase
+      .from('usuario')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .single()
+
+    if (error || !data) {
+      setError('Usuario o contraseña incorrectos')
+      return
+    }
+
+    localStorage.setItem('user', JSON.stringify(data))
+    router.push('/dashboard')
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-[#101828] flex">
+      {/* Panel izquierdo */}
+      <div className="w-[44%] bg-[#0D1421] flex flex-col justify-between p-16">
+        <div>
+          <div className="w-16 h-16 rounded-full bg-[#2696F2] flex items-center justify-center text-white font-bold text-xl mb-6">
+            TdV
+          </div>
+          <p className="text-[#2696F2] text-xs font-bold tracking-widest mb-8">
+            TEXTIL DEL VALLE S.A.
+          </p>
+          <h1 className="text-white text-5xl font-bold leading-tight">
+            Sistema de<br />Ejecución de<br />Manufactura
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-slate-400 mt-6 text-base">
+            Control total sobre la producción textil.<br />
+            Trazabilidad en tiempo real.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex gap-6">
+          {[['10+', 'Módulos'], ['5', 'Subsistemas'], ['Real-time', 'Monitoreo']].map(([val, lbl]) => (
+            <div key={lbl} className="bg-[#101828] rounded-lg p-4 flex-1">
+              <p className="text-[#2696F2] font-bold text-lg">{val}</p>
+              <p className="text-slate-400 text-xs">{lbl}</p>
+            </div>
+          ))}
         </div>
-      </main>
+      </div>
+
+      {/* Panel derecho */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="bg-[#1A2535] rounded-2xl p-10 w-[440px]">
+          <h2 className="text-white text-2xl font-bold mb-2">Iniciar Sesión</h2>
+          <p className="text-slate-400 text-sm mb-8">
+            Ingresa tus credenciales para acceder al sistema
+          </p>
+
+          <label className="text-slate-300 text-sm font-medium">Usuario</label>
+          <input
+            className="w-full bg-[#0D1421] border border-slate-600 rounded-lg px-4 py-3 text-white mt-2 mb-5 outline-none focus:border-[#2696F2]"
+            placeholder="nombredeusuario"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+          />
+
+          <label className="text-slate-300 text-sm font-medium">Contraseña</label>
+          <input
+            type="password"
+            className="w-full bg-[#0D1421] border border-slate-600 rounded-lg px-4 py-3 text-white mt-2 mb-5 outline-none focus:border-[#2696F2]"
+            placeholder="••••••••"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+
+          {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+          <button
+            onClick={handleLogin}
+            className="w-full bg-[#2696F2] text-white font-semibold py-3 rounded-lg hover:bg-[#1a7fd4] transition"
+          >
+            Ingresar al Sistema
+          </button>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
