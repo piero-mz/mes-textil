@@ -3,12 +3,22 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import { Usuario, Merma } from '@/app/types'
 import { BarChart2, CheckCircle2, AlertTriangle, Package, ClipboardList, TrendingDown } from 'lucide-react'
+
+type Stats = {
+  totalOrdenes: number
+  totalLotes: number
+  aprobados: number
+  rechazados: number
+  totalAvances: number
+  totalMerma: number
+}
 
 export default function ReportesPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [stats, setStats] = useState({
+  const [user, setUser] = useState<Usuario | null>(null)
+  const [stats, setStats] = useState<Stats>({
     totalOrdenes: 0, totalLotes: 0, aprobados: 0,
     rechazados: 0, totalAvances: 0, totalMerma: 0,
   })
@@ -16,7 +26,7 @@ export default function ReportesPage() {
   useEffect(() => {
     const u = localStorage.getItem('user')
     if (!u) { router.push('/'); return }
-    setUser(JSON.parse(u))
+    setUser(JSON.parse(u) as Usuario)
     fetchStats()
   }, [])
 
@@ -36,7 +46,7 @@ export default function ReportesPage() {
       supabase.from('avance_produccion').select('*', { count: 'exact', head: true }),
       supabase.from('merma').select('cantidad_kg'),
     ])
-    const totalMerma = (mermas || []).reduce((acc, m) => acc + (m.cantidad_kg || 0), 0)
+    const totalMerma = ((mermas as Pick<Merma, 'cantidad_kg'>[]) || []).reduce((acc, m) => acc + (m.cantidad_kg || 0), 0)
     setStats({
       totalOrdenes: totalOrdenes || 0,
       totalLotes: totalLotes || 0,
@@ -48,12 +58,12 @@ export default function ReportesPage() {
   }
 
   const cards = [
-    { label: 'Total Órdenes',        value: stats.totalOrdenes, icon: ClipboardList,  color: 'text-[#2696F2] border-[#2696F2]/30 bg-[#2696F2]/5' },
-    { label: 'Total Lotes',           value: stats.totalLotes,   icon: Package,        color: 'text-purple-400 border-purple-400/30 bg-purple-400/5' },
-    { label: 'Controles Aprobados',   value: stats.aprobados,    icon: CheckCircle2,   color: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/5' },
-    { label: 'Controles Rechazados',  value: stats.rechazados,   icon: AlertTriangle,  color: 'text-red-400 border-red-400/30 bg-red-400/5' },
-    { label: 'Registros de Avance',   value: stats.totalAvances, icon: BarChart2,      color: 'text-amber-400 border-amber-400/30 bg-amber-400/5' },
-    { label: 'Merma Total (kg)',       value: stats.totalMerma,   icon: TrendingDown,   color: 'text-orange-400 border-orange-400/30 bg-orange-400/5' },
+    { label: 'Total Órdenes',       value: stats.totalOrdenes, icon: ClipboardList, color: 'text-[#2696F2] border-[#2696F2]/30 bg-[#2696F2]/5' },
+    { label: 'Total Lotes',          value: stats.totalLotes,   icon: Package,       color: 'text-purple-400 border-purple-400/30 bg-purple-400/5' },
+    { label: 'Controles Aprobados',  value: stats.aprobados,    icon: CheckCircle2,  color: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/5' },
+    { label: 'Controles Rechazados', value: stats.rechazados,   icon: AlertTriangle, color: 'text-red-400 border-red-400/30 bg-red-400/5' },
+    { label: 'Registros de Avance',  value: stats.totalAvances, icon: BarChart2,     color: 'text-amber-400 border-amber-400/30 bg-amber-400/5' },
+    { label: 'Merma Total (kg)',      value: stats.totalMerma,   icon: TrendingDown,  color: 'text-orange-400 border-orange-400/30 bg-orange-400/5' },
   ]
 
   return (

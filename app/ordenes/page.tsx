@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import { Usuario, OrdenProduccion } from '@/app/types'
 import { Plus, X } from 'lucide-react'
 
 const estadoColor: Record<string, string> = {
@@ -12,33 +13,44 @@ const estadoColor: Record<string, string> = {
   'Completado':      'text-emerald-400 bg-emerald-400/10',
 }
 
+type OrdenForm = {
+  codigo: string
+  producto: string
+  cantidad_m: string
+  fecha_inicio: string
+  estado: string
+}
+
 export default function OrdenesPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [ordenes, setOrdenes] = useState<any[]>([])
-  const [form, setForm] = useState({ codigo: '', producto: '', cantidad_m: '', fecha_inicio: '', estado: 'Pendiente' })
+  const [user, setUser] = useState<Usuario | null>(null)
+  const [ordenes, setOrdenes] = useState<OrdenProduccion[]>([])
+  const [form, setForm] = useState<OrdenForm>({ codigo: '', producto: '', cantidad_m: '', fecha_inicio: '', estado: 'Pendiente' })
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const u = localStorage.getItem('user')
     if (!u) { router.push('/'); return }
-    setUser(JSON.parse(u))
+    setUser(JSON.parse(u) as Usuario)
     fetchOrdenes()
   }, [])
 
   const fetchOrdenes = async () => {
     const { data } = await supabase.from('orden_produccion').select('*').order('created_at', { ascending: false })
-    setOrdenes(data || [])
+    setOrdenes((data as OrdenProduccion[]) || [])
   }
 
   const handleSubmit = async () => {
     if (!form.codigo || !form.producto) return
     setLoading(true)
     await supabase.from('orden_produccion').insert([{
-      ...form,
+      codigo: form.codigo,
+      producto: form.producto,
       cantidad_m: parseFloat(form.cantidad_m),
-      responsable: user?.id
+      fecha_inicio: form.fecha_inicio,
+      estado: form.estado,
+      responsable: user?.id,
     }])
     setForm({ codigo: '', producto: '', cantidad_m: '', fecha_inicio: '', estado: 'Pendiente' })
     setShowForm(false)
@@ -67,16 +79,16 @@ export default function OrdenesPage() {
             <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-6">
               <p className="text-sm font-semibold mb-4">Registrar Nueva Orden</p>
               <div className="grid grid-cols-2 gap-4">
-                {[
+                {([
                   { label: 'Código', key: 'codigo', ph: 'OP-2024-042' },
                   { label: 'Producto / Material', key: 'producto', ph: 'Tela Denim 14oz' },
                   { label: 'Cantidad (metros)', key: 'cantidad_m', ph: '1200' },
                   { label: 'Fecha de inicio', key: 'fecha_inicio', ph: '', type: 'date' },
-                ].map(f => (
+                ] as { label: string; key: keyof OrdenForm; ph: string; type?: string }[]).map(f => (
                   <div key={f.key}>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">{f.label}</label>
                     <input type={f.type || 'text'} placeholder={f.ph}
-                      value={(form as any)[f.key]}
+                      value={form[f.key]}
                       onChange={e => setForm({ ...form, [f.key]: e.target.value })}
                       className="w-full bg-[#070D1A] border border-[#1E2D42] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#2696F2] transition" />
                   </div>
@@ -104,7 +116,7 @@ export default function OrdenesPage() {
                 {ordenes.length === 0 ? (
                   <tr><td colSpan={5} className="text-center text-[#4A7FA5] py-10">Sin órdenes registradas</td></tr>
                 ) : ordenes.map((o, i) => (
-                  <tr key={o.id} className={`border-b border-[#1E2D42]/50 hover:bg-[#1E2D42]/30 transition ${i % 2 === 0 ? '' : 'bg-[#0D1E35]/30'}`}>
+                  <tr key={o.id} className={`border-b border-[#1E2D42]/50 hover:bg-[#1E2D42]/20 transition ${i % 2 === 0 ? '' : 'bg-[#0D1E35]/30'}`}>
                     <td className="px-6 py-3 text-[#2696F2] font-medium">{o.codigo}</td>
                     <td className="px-6 py-3 text-slate-300">{o.producto}</td>
                     <td className="px-6 py-3 text-slate-300">{o.cantidad_m}</td>

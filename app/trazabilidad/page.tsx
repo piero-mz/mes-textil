@@ -1,24 +1,36 @@
 'use client'
+import React from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import { Usuario, Lote, AvanceProduccion, ControlCalidad, Merma } from '@/app/types'
 import { Search, CheckCircle2, AlertTriangle, TrendingUp } from 'lucide-react'
+
+type TimelineEvent = {
+  titulo: string
+  detalle: string
+  fecha: string
+  tipo: string
+  icon: React.ReactNode
+  color: string
+  bg: string
+}
 
 export default function TrazabilidadPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<Usuario | null>(null)
   const [busqueda, setBusqueda] = useState('')
-  const [lote, setLote] = useState<any>(null)
-  const [avances, setAvances] = useState<any[]>([])
-  const [controles, setControles] = useState<any[]>([])
-  const [mermas, setMermas] = useState<any[]>([])
+  const [lote, setLote] = useState<Lote | null>(null)
+  const [avances, setAvances] = useState<AvanceProduccion[]>([])
+  const [controles, setControles] = useState<ControlCalidad[]>([])
+  const [mermas, setMermas] = useState<Merma[]>([])
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     const u = localStorage.getItem('user')
     if (!u) { router.push('/'); return }
-    setUser(JSON.parse(u))
+    setUser(JSON.parse(u) as Usuario)
   }, [])
 
   const handleBuscar = async () => {
@@ -30,7 +42,7 @@ export default function TrazabilidadPage() {
       .from('lote')
       .select('*, orden_produccion(codigo, producto, cantidad_m, estado)')
       .eq('codigo', busqueda.trim())
-      .single()
+      .single<Lote>()
 
     if (!l) { setNotFound(true); return }
     setLote(l)
@@ -40,16 +52,16 @@ export default function TrazabilidadPage() {
       supabase.from('control_calidad').select('*').eq('lote_id', l.id).order('fecha'),
       supabase.from('merma').select('*').eq('lote_id', l.id).order('fecha'),
     ])
-    setAvances(av || [])
-    setControles(cc || [])
-    setMermas(mr || [])
+    setAvances((av as AvanceProduccion[]) || [])
+    setControles((cc as ControlCalidad[]) || [])
+    setMermas((mr as Merma[]) || [])
   }
 
-  const timeline = [
+  const timeline: TimelineEvent[] = [
     ...avances.map(a => ({
       titulo: `Avance en ${a.estacion}`,
       detalle: `${a.metros_prod} metros producidos${a.observacion ? ' — ' + a.observacion : ''}`,
-      fecha: a.hora_inicio || a.created_at,
+      fecha: a.hora_inicio || '',
       tipo: 'avance',
       icon: <TrendingUp size={14} />,
       color: 'border-[#2696F2] text-[#2696F2]',
@@ -58,7 +70,7 @@ export default function TrazabilidadPage() {
     ...controles.map(c => ({
       titulo: `Control de calidad — ${c.punto_control}`,
       detalle: c.resultado + (c.defectos ? `: ${c.defectos}` : ''),
-      fecha: c.fecha,
+      fecha: c.fecha || '',
       tipo: 'calidad',
       icon: c.resultado === 'APROBADO' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />,
       color: c.resultado === 'APROBADO' ? 'border-emerald-400 text-emerald-400' : 'border-red-400 text-red-400',
@@ -67,7 +79,7 @@ export default function TrazabilidadPage() {
     ...mermas.map(m => ({
       titulo: `Merma registrada — ${m.estacion}`,
       detalle: `${m.cantidad_kg} kg — ${m.porcentaje}%`,
-      fecha: m.fecha,
+      fecha: m.fecha || '',
       tipo: 'merma',
       icon: <AlertTriangle size={14} />,
       color: 'border-amber-400 text-amber-400',
@@ -85,17 +97,13 @@ export default function TrazabilidadPage() {
         </header>
 
         <div className="p-6 space-y-5">
-          {/* Buscador */}
           <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-4 flex gap-3">
             <div className="flex-1 flex items-center gap-3 bg-[#070D1A] border border-[#2696F2]/40 rounded-lg px-4">
               <Search size={15} className="text-[#4A7FA5]" />
-              <input
-                value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
+              <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleBuscar()}
-                placeholder="Código de lote — ej: LT-2024-088"
-                className="flex-1 bg-transparent py-3 text-white text-sm outline-none"
-              />
+                placeholder="Código de lote — ej: LT-2026-001"
+                className="flex-1 bg-transparent py-3 text-white text-sm outline-none" />
             </div>
             <button onClick={handleBuscar}
               className="bg-[#2696F2] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#1a7fd4] transition text-sm">
@@ -112,13 +120,12 @@ export default function TrazabilidadPage() {
 
           {lote && (
             <>
-              {/* Info */}
               <div className="bg-[#0A1628] border border-[#2696F2]/20 rounded-xl p-5 grid grid-cols-5 gap-4">
                 {[
                   { lbl: 'Lote', val: lote.codigo },
-                  { lbl: 'Orden', val: lote.orden_produccion?.codigo },
-                  { lbl: 'Producto', val: lote.orden_produccion?.producto },
-                  { lbl: 'Cantidad', val: `${lote.orden_produccion?.cantidad_m} m` },
+                  { lbl: 'Orden', val: (lote.orden_produccion as any)?.codigo },
+                  { lbl: 'Producto', val: (lote.orden_produccion as any)?.producto },
+                  { lbl: 'Cantidad', val: `${(lote.orden_produccion as any)?.cantidad_m} m` },
                   { lbl: 'Etapa actual', val: lote.etapa_actual },
                 ].map(d => (
                   <div key={d.lbl}>
@@ -128,7 +135,6 @@ export default function TrazabilidadPage() {
                 ))}
               </div>
 
-              {/* Progreso */}
               <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-5">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-[#4A7FA5]">Avance total</span>
@@ -139,7 +145,6 @@ export default function TrazabilidadPage() {
                 </div>
               </div>
 
-              {/* Timeline */}
               <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-5">
                 <p className="text-sm font-semibold mb-5">Historial completo</p>
                 {timeline.length === 0 ? (
@@ -156,9 +161,7 @@ export default function TrazabilidadPage() {
                             {ev.fecha ? new Date(ev.fecha).toLocaleString('es-PE') : '—'}
                           </p>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full h-fit ${ev.bg} ${ev.color}`}>
-                          {ev.tipo}
-                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full h-fit ${ev.bg} ${ev.color}`}>{ev.tipo}</span>
                       </div>
                     ))}
                   </div>

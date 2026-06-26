@@ -3,18 +3,23 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import { Usuario, Lote, OrdenProduccion, AvanceProduccion, Merma } from '@/app/types'
 import { Plus, X } from 'lucide-react'
 
 const etapas = ['Tejido', 'Teñido', 'Acabado', 'Control', 'Despacho']
 
+type LoteForm   = { codigo: string; orden_id: string; etapa_actual: string }
+type AvanceForm = { lote_id: string; estacion: string; metros_prod: string; observacion: string }
+type MermaForm  = { lote_id: string; estacion: string; cantidad_kg: string; porcentaje: string }
+
 export default function LotesPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [lotes, setLotes] = useState<any[]>([])
-  const [ordenes, setOrdenes] = useState<any[]>([])
-  const [form, setForm] = useState({ codigo: '', orden_id: '', etapa_actual: 'Tejido' })
-  const [avanceForm, setAvanceForm] = useState({ lote_id: '', estacion: 'Tejido', metros_prod: '', observacion: '' })
-  const [mermaForm, setMermaForm] = useState({ lote_id: '', estacion: 'Tejido', cantidad_kg: '', porcentaje: '' })
+  const [user, setUser] = useState<Usuario | null>(null)
+  const [lotes, setLotes] = useState<Lote[]>([])
+  const [ordenes, setOrdenes] = useState<OrdenProduccion[]>([])
+  const [form, setForm] = useState<LoteForm>({ codigo: '', orden_id: '', etapa_actual: 'Tejido' })
+  const [avanceForm, setAvanceForm] = useState<AvanceForm>({ lote_id: '', estacion: 'Tejido', metros_prod: '', observacion: '' })
+  const [mermaForm, setMermaForm] = useState<MermaForm>({ lote_id: '', estacion: 'Tejido', cantidad_kg: '', porcentaje: '' })
   const [showForm, setShowForm] = useState(false)
   const [tab, setTab] = useState<'avance' | 'merma'>('avance')
   const [loading, setLoading] = useState(false)
@@ -22,15 +27,15 @@ export default function LotesPage() {
   useEffect(() => {
     const u = localStorage.getItem('user')
     if (!u) { router.push('/'); return }
-    setUser(JSON.parse(u))
+    setUser(JSON.parse(u) as Usuario)
     fetchData()
   }, [])
 
   const fetchData = async () => {
     const { data: l } = await supabase.from('lote').select('*, orden_produccion(codigo, producto)').order('created_at', { ascending: false })
     const { data: o } = await supabase.from('orden_produccion').select('id, codigo, producto')
-    setLotes(l || [])
-    setOrdenes(o || [])
+    setLotes((l as Lote[]) || [])
+    setOrdenes((o as OrdenProduccion[]) || [])
   }
 
   const handleCrearLote = async () => {
@@ -51,11 +56,11 @@ export default function LotesPage() {
       estacion: avanceForm.estacion,
       metros_prod: parseFloat(avanceForm.metros_prod),
       observacion: avanceForm.observacion,
-      operario: user?.id
+      operario: user?.id,
     }])
     const lote = lotes.find(l => l.id === parseInt(avanceForm.lote_id))
     if (lote?.orden_id) {
-      const { data: orden } = await supabase.from('orden_produccion').select('cantidad_m').eq('id', lote.orden_id).single()
+      const { data: orden } = await supabase.from('orden_produccion').select('cantidad_m').eq('id', lote.orden_id).single<OrdenProduccion>()
       if (orden?.cantidad_m) {
         const pct = Math.min(100, Math.round((parseFloat(avanceForm.metros_prod) / orden.cantidad_m) * 100))
         await supabase.from('lote').update({ avance_pct: pct, etapa_actual: avanceForm.estacion }).eq('id', avanceForm.lote_id)
@@ -74,7 +79,7 @@ export default function LotesPage() {
       estacion: mermaForm.estacion,
       cantidad_kg: parseFloat(mermaForm.cantidad_kg),
       porcentaje: parseFloat(mermaForm.porcentaje || '0'),
-      operario: user?.id
+      operario: user?.id,
     }])
     setMermaForm({ lote_id: '', estacion: 'Tejido', cantidad_kg: '', porcentaje: '' })
     setLoading(false)
@@ -82,7 +87,6 @@ export default function LotesPage() {
   }
 
   const inputClass = "w-full bg-[#070D1A] border border-[#1E2D42] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#2696F2] transition"
-  const selectClass = "w-full bg-[#070D1A] border border-[#1E2D42] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#2696F2] transition"
 
   return (
     <div className="min-h-screen bg-[#070D1A] flex text-white">
@@ -108,21 +112,18 @@ export default function LotesPage() {
                 <div>
                   <label className="text-[#4A7FA5] text-xs mb-1 block">Código de lote</label>
                   <input placeholder="LT-2024-088" value={form.codigo}
-                    onChange={e => setForm({ ...form, codigo: e.target.value })}
-                    className={inputClass} />
+                    onChange={e => setForm({ ...form, codigo: e.target.value })} className={inputClass} />
                 </div>
                 <div>
                   <label className="text-[#4A7FA5] text-xs mb-1 block">Orden de producción</label>
-                  <select value={form.orden_id} onChange={e => setForm({ ...form, orden_id: e.target.value })}
-                    className={selectClass}>
+                  <select value={form.orden_id} onChange={e => setForm({ ...form, orden_id: e.target.value })} className={inputClass}>
                     <option value="">Seleccionar...</option>
                     {ordenes.map(o => <option key={o.id} value={o.id}>{o.codigo} — {o.producto}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[#4A7FA5] text-xs mb-1 block">Etapa inicial</label>
-                  <select value={form.etapa_actual} onChange={e => setForm({ ...form, etapa_actual: e.target.value })}
-                    className={selectClass}>
+                  <select value={form.etapa_actual} onChange={e => setForm({ ...form, etapa_actual: e.target.value })} className={inputClass}>
                     {etapas.map(e => <option key={e}>{e}</option>)}
                   </select>
                 </div>
@@ -135,7 +136,6 @@ export default function LotesPage() {
           )}
 
           <div className="grid grid-cols-2 gap-5">
-            {/* Lista lotes */}
             <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-5">
               <p className="text-sm font-semibold mb-4">Lotes Activos</p>
               <div className="space-y-3">
@@ -157,7 +157,6 @@ export default function LotesPage() {
               </div>
             </div>
 
-            {/* Panel registro */}
             <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-5">
               <div className="flex gap-1 mb-5 bg-[#070D1A] rounded-lg p-1">
                 <button onClick={() => setTab('avance')}
@@ -174,30 +173,26 @@ export default function LotesPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Lote</label>
-                    <select value={avanceForm.lote_id} onChange={e => setAvanceForm({ ...avanceForm, lote_id: e.target.value })}
-                      className={selectClass}>
+                    <select value={avanceForm.lote_id} onChange={e => setAvanceForm({ ...avanceForm, lote_id: e.target.value })} className={inputClass}>
                       <option value="">Seleccionar lote...</option>
                       {lotes.map(l => <option key={l.id} value={l.id}>{l.codigo}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Estación</label>
-                    <select value={avanceForm.estacion} onChange={e => setAvanceForm({ ...avanceForm, estacion: e.target.value })}
-                      className={selectClass}>
+                    <select value={avanceForm.estacion} onChange={e => setAvanceForm({ ...avanceForm, estacion: e.target.value })} className={inputClass}>
                       {etapas.map(e => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Metros producidos</label>
                     <input placeholder="280" value={avanceForm.metros_prod}
-                      onChange={e => setAvanceForm({ ...avanceForm, metros_prod: e.target.value })}
-                      className={inputClass} />
+                      onChange={e => setAvanceForm({ ...avanceForm, metros_prod: e.target.value })} className={inputClass} />
                   </div>
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Observaciones</label>
                     <input placeholder="Sin incidencias..." value={avanceForm.observacion}
-                      onChange={e => setAvanceForm({ ...avanceForm, observacion: e.target.value })}
-                      className={inputClass} />
+                      onChange={e => setAvanceForm({ ...avanceForm, observacion: e.target.value })} className={inputClass} />
                   </div>
                   <button onClick={handleAvance} disabled={loading}
                     className="w-full bg-[#2696F2] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#1a7fd4] transition disabled:opacity-50">
@@ -208,30 +203,26 @@ export default function LotesPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Lote</label>
-                    <select value={mermaForm.lote_id} onChange={e => setMermaForm({ ...mermaForm, lote_id: e.target.value })}
-                      className={selectClass}>
+                    <select value={mermaForm.lote_id} onChange={e => setMermaForm({ ...mermaForm, lote_id: e.target.value })} className={inputClass}>
                       <option value="">Seleccionar lote...</option>
                       {lotes.map(l => <option key={l.id} value={l.id}>{l.codigo}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Estación</label>
-                    <select value={mermaForm.estacion} onChange={e => setMermaForm({ ...mermaForm, estacion: e.target.value })}
-                      className={selectClass}>
+                    <select value={mermaForm.estacion} onChange={e => setMermaForm({ ...mermaForm, estacion: e.target.value })} className={inputClass}>
                       {etapas.map(e => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Cantidad (kg)</label>
                     <input placeholder="12.5" value={mermaForm.cantidad_kg}
-                      onChange={e => setMermaForm({ ...mermaForm, cantidad_kg: e.target.value })}
-                      className={inputClass} />
+                      onChange={e => setMermaForm({ ...mermaForm, cantidad_kg: e.target.value })} className={inputClass} />
                   </div>
                   <div>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">Porcentaje (%)</label>
                     <input placeholder="2.3" value={mermaForm.porcentaje}
-                      onChange={e => setMermaForm({ ...mermaForm, porcentaje: e.target.value })}
-                      className={inputClass} />
+                      onChange={e => setMermaForm({ ...mermaForm, porcentaje: e.target.value })} className={inputClass} />
                   </div>
                   <button onClick={handleMerma} disabled={loading}
                     className="w-full bg-amber-500 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-amber-600 transition disabled:opacity-50">

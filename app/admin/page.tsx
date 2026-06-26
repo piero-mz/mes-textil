@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import { Usuario } from '@/app/types'
 import { Plus, X, UserCheck, UserX } from 'lucide-react'
 
 const roles = [
   'Gerente de Producción', 'Jefe de Producción', 'Supervisor',
-  'Operario de Planta', 'Coord. de Calidad', 'Jefe de Sistemas'
+  'Operario de Planta', 'Coord. de Calidad', 'Jefe de Sistemas',
 ]
 
 const rolColor: Record<string, string> = {
@@ -19,24 +20,26 @@ const rolColor: Record<string, string> = {
   'Operario de Planta':    'bg-slate-400/10 text-slate-400',
 }
 
+type UsuarioForm = { username: string; nombre: string; email: string; password: string; rol: string }
+
 export default function AdminPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [usuarios, setUsuarios] = useState<any[]>([])
-  const [form, setForm] = useState({ username: '', nombre: '', email: '', password: '', rol: 'Operario de Planta' })
+  const [user, setUser] = useState<Usuario | null>(null)
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [form, setForm] = useState<UsuarioForm>({ username: '', nombre: '', email: '', password: '', rol: 'Operario de Planta' })
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const u = localStorage.getItem('user')
     if (!u) { router.push('/'); return }
-    setUser(JSON.parse(u))
+    setUser(JSON.parse(u) as Usuario)
     fetchUsuarios()
   }, [])
 
   const fetchUsuarios = async () => {
     const { data } = await supabase.from('usuario').select('*').order('created_at', { ascending: false })
-    setUsuarios(data || [])
+    setUsuarios((data as Usuario[]) || [])
   }
 
   const handleCrear = async () => {
@@ -73,41 +76,36 @@ export default function AdminPage() {
         </header>
 
         <div className="p-6 space-y-5">
-          {/* Resumen por rol */}
           <div className="grid grid-cols-6 gap-3">
             {roles.map(r => (
               <div key={r} className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-4">
-                <p className="text-2xl font-bold text-white">
-                  {usuarios.filter(u => u.rol === r).length}
-                </p>
+                <p className="text-2xl font-bold text-white">{usuarios.filter(u => u.rol === r).length}</p>
                 <p className="text-[#4A7FA5] text-xs mt-1 leading-tight">{r}</p>
               </div>
             ))}
           </div>
 
-          {/* Formulario */}
           {showForm && (
             <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl p-6">
               <p className="text-sm font-semibold mb-4">Registrar Nuevo Usuario</p>
               <div className="grid grid-cols-2 gap-4">
-                {[
+                {([
                   { label: 'Username', key: 'username', ph: 'jlopez' },
                   { label: 'Nombre completo', key: 'nombre', ph: 'Juan López Díaz' },
                   { label: 'Email', key: 'email', ph: 'jlopez@textil.com' },
                   { label: 'Contraseña', key: 'password', ph: '••••••••', type: 'password' },
-                ].map(f => (
+                ] as { label: string; key: keyof UsuarioForm; ph: string; type?: string }[]).map(f => (
                   <div key={f.key}>
                     <label className="text-[#4A7FA5] text-xs mb-1 block">{f.label}</label>
                     <input type={f.type || 'text'} placeholder={f.ph}
-                      value={(form as any)[f.key]}
+                      value={form[f.key]}
                       onChange={e => setForm({ ...form, [f.key]: e.target.value })}
                       className={inputClass} />
                   </div>
                 ))}
                 <div className="col-span-2">
                   <label className="text-[#4A7FA5] text-xs mb-1 block">Rol</label>
-                  <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}
-                    className={inputClass}>
+                  <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })} className={inputClass}>
                     {roles.map(r => <option key={r}>{r}</option>)}
                   </select>
                 </div>
@@ -119,7 +117,6 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Tabla */}
           <div className="bg-[#0A1628] border border-[#1E2D42] rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>

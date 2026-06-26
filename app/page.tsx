@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { Usuario } from '@/app/types'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -10,14 +11,14 @@ export default function LoginPage() {
   const router = useRouter()
 
   const handleLogin = async () => {
-    const { data, error } = await supabase
+    const { data, error: err } = await supabase
       .from('usuario')
       .select('*')
       .eq('username', username)
       .eq('password', password)
-      .single()
+      .single<Usuario>()
 
-    if (error || !data) {
+    if (err || !data) {
       setError('Usuario o contraseña incorrectos')
       return
     }
@@ -28,7 +29,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#101828] flex">
-      {/* Panel izquierdo */}
       <div className="w-[44%] bg-[#0D1421] flex flex-col justify-between p-16">
         <div>
           <div className="w-16 h-16 rounded-full bg-[#2696F2] flex items-center justify-center text-white font-bold text-xl mb-6">
@@ -55,7 +55,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Panel derecho */}
       <div className="flex-1 flex items-center justify-center">
         <div className="bg-[#1A2535] rounded-2xl p-10 w-[440px]">
           <h2 className="text-white text-2xl font-bold mb-2">Iniciar Sesión</h2>

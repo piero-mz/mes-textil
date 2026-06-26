@@ -4,6 +4,7 @@ import {
   LayoutDashboard, ClipboardList, Package, CheckCircle,
   Search, BarChart2, Settings, LogOut
 } from 'lucide-react'
+import { Usuario } from '@/app/types'
 
 const navItems = [
   { label: 'Dashboard',       href: '/dashboard',    icon: LayoutDashboard },
@@ -15,7 +16,7 @@ const navItems = [
   { label: 'Administración',  href: '/admin',        icon: Settings        },
 ]
 
-export default function Sidebar({ user }: { user: any }) {
+export default function Sidebar({ user }: { user: Usuario | null }) {
   const router   = useRouter()
   const pathname = usePathname()
 
